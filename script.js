@@ -839,7 +839,7 @@ function renderMenu() {
     // =========================
     if (menuConfig?.recomendados && Object.keys(menuConfig.recomendados).length > 0) {
 
-        let htmlChef = `<h3 class="titulo-categoria">🐠⭐ Promo disponible ⭐🦐</h3><div class="grid-productos">`;
+        let htmlChef = `<h3 class="titulo-categoria">🐠⭐Promo disponible⭐🦐</h3><div class="grid-productos">`;
         let hayRecomendados = false;
 
         categorias.forEach(cat => {

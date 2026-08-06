@@ -15,43 +15,66 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 
 
 const BUCKET_URL = "https://nube.menwapp.com/lavela/json";
+const BACKUP_URL = "https://carta1.menwapp.com/web"; // 👈 Ruta de respaldo
 const cb = `?t=${new Date().getTime()}`; 
 
 // ============================================================
-// MOTOR DE CARGA (SUPABASE)
+// MOTOR DE CARGA CON RESPALDO (FALLBACK)
 // ============================================================
 async function inicializarApp() {
     console.log("🚀 Iniciando MenWapp...");
 
-    const cargarArchivo = async (ruta) => {
+    // Función auxiliar que intenta cargar desde la URL principal y luego desde el respaldo
+    const cargarArchivo = async (nombreArchivo) => {
+        const urlPrincipal = `${BUCKET_URL}/${nombreArchivo}${cb}`;
+        const urlRespaldo = `${BACKUP_URL}/${nombreArchivo}${cb}`;
+
+        // 1. Intentar con la ruta principal
         try {
-            const res = await fetch(ruta, { mode: 'cors' });
-            if (!res.ok) return null;
-            return await res.json();
+            const res = await fetch(urlPrincipal, { mode: 'cors' });
+            if (res.ok) {
+                return await res.json();
+            }
+            console.warn(`⚠️ Falló ruta principal (${res.status}) para ${nombreArchivo}. Intentando respaldo...`);
         } catch (e) {
-            console.error("Error cargando:", ruta, e);
+            console.warn(`⚠️ Error de red en ruta principal para ${nombreArchivo}. Intentando respaldo...`);
+        }
+
+        // 2. Intentar con la ruta secundaria/respaldo
+        try {
+            const resRespaldo = await fetch(urlRespaldo, { mode: 'cors' });
+            if (resRespaldo.ok) {
+                console.log(`✅ Cargado exitosamente desde respaldo: ${nombreArchivo}`);
+                return await resRespaldo.json();
+            }
+            console.error(`❌ También falló la ruta de respaldo (${resRespaldo.status}) para ${nombreArchivo}`);
+            return null;
+        } catch (e) {
+            console.error(`❌ Error de red en ruta de respaldo para ${nombreArchivo}:`, e);
             return null;
         }
     };
 
     try {
+        // Pasamos únicamente el nombre del archivo para que 'cargarArchivo' arme las dos URLs
         const resultados = await Promise.all([
-            cargarArchivo(`${BUCKET_URL}/menu.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/menu_config.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/descripciones.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/imagenes.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/promo.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/sugeridos_promo.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/acompanamientos.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/adicionales.json${cb}`),
-            cargarArchivo(`${BUCKET_URL}/grupo1.json${cb}`)
+            cargarArchivo('menu.json'),
+            cargarArchivo('menu_config.json'),
+            cargarArchivo('descripciones.json'),
+            cargarArchivo('imagenes.json'),
+            cargarArchivo('promo.json'),
+            cargarArchivo('sugeridos_promo.json'),
+            cargarArchivo('acompanamientos.json'),
+            cargarArchivo('adicionales.json'),
+            cargarArchivo('grupo1.json')
         ]);
 
         const [mRaw, cfg, desc, img, prm, sug, acmp, adic, grupoPrincipal] = resultados;
 
         // --- VALIDACIÓN DE CARGA ---
+        // Si no cargó desde la principal ni desde el respaldo, mRaw será null y saltará al catch final
         if (!mRaw || !mRaw.menu) {
-            throw new Error("No se pudo cargar el menú.");
+            throw new Error("No se pudo cargar el menú desde ninguna de las ubicaciones.");
         }
 
         menuData = mRaw.menu;
@@ -93,26 +116,27 @@ async function inicializarApp() {
         }
 
     } catch (error) {
-        console.error("Error crítico de inicialización:", error);
-        // --- MENSAJE AUTOMÁTICO SI EL JSON NO CARGA ---
+        console.error("Error crítico de inicialización (Ambas rutas fallaron):", error);
+        
+        // --- MENSAJE AUTOMÁTICO SOLO SI FALLAN PRINCIPAL Y RESPALDO ---
         document.body.innerHTML = `
-
-<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: 'Poppins', sans-serif; background: #fff;">
-    <h1 style="font-size: 4rem;">🦐</h1>
-    <h2 style="color: #333; margin: 20px 0;">En estos momentos no tenemos servicio, Pero puedes ver nuestra carta aquí mismo para que te antojes, recuerda que en LA VELA estamos para servirte.🦐🦞🐠:</h2>
-    
-    <div style="width: 100%; max-width: 800px; height: 600px; border: 2px solid #333; border-radius: 10px; overflow: hidden; background: #eee;">
-        <iframe 
-            src="https://drive.google.com/file/d/1DMvgJ03AbKH13kdNR-z5xib-VpB3c7wG/preview" 
-            width="100%" 
-            height="100%" 
-            frameborder="0">
-        </iframe>
-    </div>
-</div>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: 'Poppins', sans-serif; background: #fff;">
+            <h1 style="font-size: 4rem;">🍔</h1>
+            <h2 style="color: #333; margin: 20px 0;">En estos momentos no tenemos servicio, Pero puedes ver nuestra carta aquí mismo para que te antojes, DISTRITO donde encuentras las mejores hamburguesas de Bucaramanga🍔🍔🍔:</h2>
+            
+            <div style="width: 100%; max-width: 800px; height: 600px; border: 2px solid #333; border-radius: 10px; overflow: hidden; background: #eee;">
+                <iframe 
+                    src="https://drive.google.com/file/d/1DMvgJ03AbKH13kdNR-z5xib-VpB3c7wG/preview" 
+                    width="100%" 
+                    height="100%" 
+                    frameborder="0">
+                </iframe>
+            </div>
+        </div>
         `;
     }
 }
+
 // ============================================================
 // LÓGICA DE PRODUCTOS Y MODAL
 // ============================================================

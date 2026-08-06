@@ -1,19 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@300;400;600&family=Poppins:wght@600&display=swap');
 
 :root {
-  /* MARCA */
-  --color-principal: #f2b705;   /* amarillo hamburguesa */
-  --color-secundario: #ffd23f;  /* amarillo brillante */
-  --color-acento: #ff8c00;      /* acento cálido */
+  /* MARCA - LA VELA */
+  --color-principal: #e60000;   /* rojo vibrante principal */
+  --color-secundario: #ff3333;  /* rojo más brillante para hovers/destacados */
+  --color-acento: #ffffff;      /* blanco puro para contraste (vela) */
 
   /* BASE */
-  --color-fondo: #0d0d0d;   /* negro profundo */
-  --color-card: #1a1a1a;    /* negro suave */
-  --color-borde: #2a2a2a;
+  --color-fondo: #0d0d0d;       /* negro profundo */
+  --color-card: #1a1a1a;        /* negro suave */
+  --color-borde: #2f2f2f;       /* gris oscuro para delinear elementos */
 
   /* TEXTO */
   --color-texto: #ffffff;
-  --color-texto-secundario: #bfbfbf;
+  --color-texto-secundario: #cccccc;
 }
 
 * { box-sizing: border-box; }

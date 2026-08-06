@@ -98,8 +98,8 @@ async function inicializarApp() {
         document.body.innerHTML = `
 
 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: 'Poppins', sans-serif; background: #fff;">
-    <h1 style="font-size: 4rem;">🍔</h1>
-    <h2 style="color: #333; margin: 20px 0;">En estos momentos no tenemos servicio, Pero puedes ver nuestra carta aquí mismo para que te antojes, DISTRITO donde encuentras las mejores hamburuesas de Bucaramanga🍔🍔🍔:</h2>
+    <h1 style="font-size: 4rem;">🦐</h1>
+    <h2 style="color: #333; margin: 20px 0;">En estos momentos no tenemos servicio, Pero puedes ver nuestra carta aquí mismo para que te antojes, recuerda que en LA VELA estamos para servirte.🦐🦞🐠:</h2>
     
     <div style="width: 100%; max-width: 800px; height: 600px; border: 2px solid #333; border-radius: 10px; overflow: hidden; background: #eee;">
         <iframe 
@@ -839,7 +839,7 @@ function renderMenu() {
     // =========================
     if (menuConfig?.recomendados && Object.keys(menuConfig.recomendados).length > 0) {
 
-        let htmlChef = `<h3 class="titulo-categoria">🍔⭐ Promo del día (${hoy}) ⭐🍔</h3><div class="grid-productos">`;
+        let htmlChef = `<h3 class="titulo-categoria">🐠⭐ Promo disponible ⭐🦐</h3><div class="grid-productos">`;
         let hayRecomendados = false;
 
         categorias.forEach(cat => {

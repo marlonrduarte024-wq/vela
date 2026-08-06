@@ -14,7 +14,7 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 
 
 
-const BUCKET_URL = "https://nube.menwapp.com/distrito/json";
+const BUCKET_URL = "https://nube.menwapp.com/lavela/json";
 const cb = `?t=${new Date().getTime()}`; 
 
 // ============================================================

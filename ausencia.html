@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MENWAPP - Gestión de Ausencia Pro</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --container-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --accent-green: #1e8449;
+            --accent-green-hover: #28b463;
+            --border-color: #404040;
+            --status-success: #27ae60;
+            --status-warning: #f39c12;
+            --status-error: #e74c3c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            width: 100%;
+            max-width: 750px;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 480px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            padding: 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-green-hover);
+        }
+
+        button {
+            width: 100%;
+            height: 50px;
+            background-color: var(--accent-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--accent-green-hover);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.99);
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .status {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--status-warning);
+            transition: color 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Panel de Control de Ausencia</h1>
+    
+    <textarea id="textArea" placeholder="Conectando con el servidor local..."></textarea>
+    
+    <button id="updateBtn" onclick="actualizarWorker()">GUARDAR Y SINCRONIZAR</button>
+    
+    <div id="statusLabel" class="status">Conectando con el servidor local...</div>
+</div>
+
+<script>
+    
+    
+    // 🚀 URL ABSOLUTA EN HTTPS Y SIN BARRA FINAL
+    const API_LOCAL_URL = "https://nube.menwapp.com/api/ausencia";
+
+    const textArea = document.getElementById("textArea");
+    const updateBtn = document.getElementById("updateBtn");
+    const statusLabel = document.getElementById("statusLabel");
+
+    document.addEventListener("DOMContentLoaded", cargarDatos);
+
+    async function cargarDatos() {
+        try {
+            updateBtn.disabled = true;
+            actualizarEstado("Conectando con la torre...", "var(--status-warning)");
+            
+            const response = await fetch(API_LOCAL_URL, { method: "GET" });
+            
+            if (response.ok) {
+                const resData = await response.json();
+                if (resData.status === "success") {
+                    textArea.value = resData.mensaje;
+                    actualizarEstado("Sincronizado: Mensaje cargado desde la torre", "var(--status-success)");
+                } else if (resData.status === "warning") {
+                    actualizarEstado("Aviso: Variable MENSAJE_AUSENCIA no encontrada", "var(--status-warning)");
+                } else {
+                    actualizarEstado("Error al interpretar los datos del servidor", "var(--status-error)");
+                }
+            } else {
+                actualizarEstado(`Error del servidor: HTTP ${response.status}`, "var(--status-error)");
+            }
+        } catch (error) {
+            actualizarEstado("No se pudo establecer conexión con el servidor local", "var(--status-error)");
+        } finally {
+            updateBtn.disabled = false;
+        }
+    }
+
+    async function actualizarWorker() {
+        const nuevoMensaje = textArea.value.trim();
+        if (!nuevoMensaje) {
+            alert("Atención: El mensaje no puede estar vacío.");
+            return;
+        }
+
+        try {
+            actualizarEstado("Subiendo script a la torre...", "var(--status-warning)");
+            updateBtn.disabled = true;
+
+            const response = await fetch(API_LOCAL_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ "mensaje": nuevoMensaje })
+            });
+
+            if (response.ok) {
+                alert("¡Éxito: Script actualizado en Cloudflare!");
+                actualizarEstado("Sincronizado correctamente", "var(--status-success)");
+            } else {
+                const errData = await response.json().catch(() => ({}));
+                alert(`Error: ${errData.detail || 'Fallo al procesar en Cloudflare'}`);
+                actualizarEstado("Error de subida", "var(--status-error)");
+            }
+        } catch (error) {
+            alert("Error crítico de comunicación con el backend local.");
+            actualizarEstado("Error de red", "var(--status-error)");
+        } finally {
+            updateBtn.disabled = false;
+        }
+    }
+
+    function actualizarEstado(texto, color) {
+        statusLabel.innerText = texto;
+        statusLabel.style.color = color;
+    }
+</script>
+
+</body>
+</html>

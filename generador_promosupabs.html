@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Promos y Horarios ⭐🕒</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        body { background-color: #121212; color: #e0e0e0; }
+        /* Ocultar flechas nativas en los inputs de tiempo */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.7);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col">
+
+    <header class="bg-[#1a1a1a] border-b border-gray-800 p-4 shadow-md flex justify-between items-center sticky top-0 z-50">
+        <div>
+            <h1 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">Panel de Control web ascomp ⭐</h1>
+            <p class="text-xs text-gray-400 hidden sm:block">Configuración en tiempo real de Promociones y Horarios</p>
+        </div>
+        <button onclick="guardarConfiguracion()" id="btn-guardar" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded transition-colors text-sm md:text-base shadow cursor-pointer disabled:bg-gray-700 disabled:text-gray-400" disabled>
+            ⏳ CARGANDO DATOS..
+        </button>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 space-y-6">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section class="bg-[#1a1a1a] p-4 rounded-xl border border-gray-800 h-[450px] lg:h-[550px] flex flex-col">
+                <h2 class="text-md font-semibold text-gray-300 mb-3 flex items-center gap-2">🔍 Buscar Producto para promo</h2>
+                <input type="text" id="buscador" oninput="filtrarProductos()" placeholder="Escribe el nombre del artículo..." 
+                       class="w-full bg-[#2a2a2a] border border-gray-700 rounded p-2 text-white focus:outline-none focus:border-blue-500 mb-4 text-sm">
+                
+                <div id="lista-busqueda" class="flex-1 overflow-y-auto divide-y divide-gray-800 bg-[#151515] rounded border border-gray-800">
+                </div>
+            </section>
+
+            <section class="bg-[#1a1a1a] p-4 rounded-xl border border-gray-800 lg:col-span-2 flex flex-col h-[450px] lg:h-[550px]">
+                <h2 class="text-md font-semibold text-gray-300 mb-3 flex items-center gap-2">⭐ Configuración de Recomendados por Día</h2>
+                <div id="panel-config" class="flex-1 overflow-y-auto space-y-4 pr-1">
+                </div>
+            </section>
+        </div>
+
+        <section class="bg-[#1a1a1a] p-4 md:p-6 rounded-xl border border-gray-800">
+            <h2 class="text-md font-semibold text-gray-300 mb-4 flex items-center gap-2">🕒 Horarios de Atención</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-800 text-gray-400 font-medium">
+                            <th class="py-3 px-2 w-[140px]">Día</th>
+                            <th class="py-3 px-2 text-center w-[180px]">Turno 1 (Apertura - Cierre)</th>
+                            <th class="py-3 px-2 text-center w-[180px]">Turno 2 (Opcional Partido)</th>
+                            <th class="py-3 px-2 text-right w-[130px]">Estado en Web</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-horarios" class="divide-y divide-gray-800/60">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // =========================================================
+        // 🔑 CONFIGURACIÓN IDÉNTICA A SUPABASE_UTILS
+        // =========================================================
+        const SUPABASE_URL = "https://mmtgjmxfvuzkktktergc.supabase.co"; 
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tdGdqbXhmdnV6a2t0a3RlcmdjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTc0MzQ0MCwiZXhwIjoyMDkxMzE5NDQwfQ.r3rhdD7Ro_11ozJ6frVIMqYe7HB-WC8zBbwVrsKB9b4"; 
+        const BUCKET_NAME = "conf_pagina"; 
+
+        const URL_MENU_JSON = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/menu.json`;
+        const URL_CONFIG_JSON = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/menu_config.json`;
+
+        let supabaseClient = null;
+        try {
+            if (typeof supabase !== 'undefined') {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+            } else if (typeof Supabase !== 'undefined') {
+                supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+            }
+        } catch (err) {
+            console.error("Error inicializando SDK de Supabase:", err);
+        }
+
+        const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+        let productos = [];
+        let top_items_dict = {};
+        let lista_horarios_local = {}; 
+        let jsonConfigOriginal = {}; 
+
+        // 1. LEER LOS JSON AL INICIAR
+        async function cargarDatos() {
+            const btnGuardar = document.getElementById('btn-guardar');
+            try {
+                console.log("Leyendo menú...");
+                const resMenu = await fetch(URL_MENU_JSON, { cache: "no-store" });
+                if (!resMenu.ok) throw new Error(`No se pudo leer el archivo menu.json`);
+                
+                const jsonMenu = await resMenu.json();
+                productos = [];
+                const menu = jsonMenu.menu || {};
+                for (const categoria in menu) {
+                    menu[categoria].forEach(p => {
+                        productos.push({
+                            codigo: String(p.codigo || "").trim(),
+                            nombre: String(p.articulo || "").trim(),
+                            categoria: categoria
+                        });
+                    });
+                }
+
+                // Cargar configuraciones del menu_config
+                try {
+                    console.log("Leyendo menu_config...");
+                    const resConfig = await fetch(URL_CONFIG_JSON, { cache: "no-store" });
+                    if (resConfig.ok) {
+                        jsonConfigOriginal = await resConfig.json();
+                        
+                        // Cargar Promos
+                        top_items_dict = jsonConfigOriginal.recomendados || {};
+                        if (Array.isArray(top_items_dict)) {
+                            let temp = {};
+                            top_items_dict.forEach(cod => { temp[cod] = [...DIAS_SEMANA]; });
+                            top_items_dict = temp;
+                        }
+
+                        // Cargar Horarios
+                        if (!jsonConfigOriginal.horarios) {
+                            jsonConfigOriginal.horarios = generarEstructuraHorariosPorDefecto();
+                        }
+                        lista_horarios_local = JSON.parse(JSON.stringify(jsonConfigOriginal.horarios));
+
+                    } else {
+                        jsonConfigOriginal = { horarios: generarEstructuraHorariosPorDefecto() };
+                        lista_horarios_local = JSON.parse(JSON.stringify(jsonConfigOriginal.horarios));
+                        top_items_dict = {};
+                    }
+                } catch (e) {
+                    jsonConfigOriginal = { horarios: generarEstructuraHorariosPorDefecto() };
+                    lista_horarios_local = JSON.parse(JSON.stringify(jsonConfigOriginal.horarios));
+                    top_items_dict = {};
+                }
+
+                if (!supabaseClient && typeof Supabase !== 'undefined') {
+                    supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+                }
+
+                btnGuardar.innerText = "💾 GUARDAR TODO EN NUBE";
+                btnGuardar.disabled = false;
+
+                filtrarProductos();
+                reconstruirPanel();
+                renderizarTablaHorarios();
+
+            } catch (error) {
+                console.error(error);
+                btnGuardar.innerText = "❌ ERROR DE CONEXIÓN";
+                alert("⚠️ Error inicializando datos: " + error.message);
+            }
+        }
+
+        function generarEstructuraHorariosPorDefecto() {
+            let h = {};
+            DIAS_SEMANA.forEach(d => {
+                h[d] = {
+                    cerrado: false,
+                    rangos: [{ inicio: "18:00", fin: "23:00" }]
+                }
+            });
+            return h;
+        }
+
+        // 2. BUSCADOR Y LISTA
+        function filtrarProductos() {
+            const query = document.getElementById('buscador').value.toLowerCase();
+            const contenedor = document.getElementById('lista-busqueda');
+            contenedor.innerHTML = '';
+
+            const filtrados = productos.filter(p => p.nombre.toLowerCase().includes(query));
+            filtrados.forEach(p => {
+                const item = document.createElement('div');
+                item.className = "p-3 hover:bg-[#252525] cursor-pointer text-sm transition-colors flex justify-between items-center select-none";
+                item.innerHTML = `
+                    <span class="font-medium text-gray-300">${p.nombre}</span>
+                    <span class="text-xs text-gray-500 bg-[#222] px-2 py-0.5 rounded">${p.categoria}</span>
+                `;
+                item.onclick = () => agregarProducto(p.codigo);
+                contenedor.appendChild(item);
+            });
+        }
+
+        function agregarProducto(codigo) {
+            if (!top_items_dict[codigo]) {
+                top_items_dict[codigo] = [...DIAS_SEMANA];
+                reconstruirPanel();
+            }
+        }
+
+        function eliminarProducto(codigo) {
+            delete top_items_dict[codigo];
+            reconstruirPanel();
+        }
+
+        function toggleDia(codigo, dia) {
+            if (top_items_dict[codigo].includes(dia)) {
+                top_items_dict[codigo] = top_items_dict[codigo].filter(d => d !== dia);
+            } else {
+                top_items_dict[codigo].push(dia);
+            }
+        }
+
+        // 3. RENDER DE PANELS (PROMOS)
+        function reconstruirPanel() {
+            const contenedor = document.getElementById('panel-config');
+            contenedor.innerHTML = '';
+
+            const codigosActivos = Object.keys(top_items_dict);
+            if (codigosActivos.length === 0) {
+                contenedor.innerHTML = `<div class="text-gray-600 text-center py-10 text-sm">No hay productos seleccionados. Haz clic en un producto de la izquierda para programar promociones.</div>`;
+                return;
+            }
+
+            codigosActivos.forEach(codigo => {
+                const prod = productos.find(p => p.codigo === codigo);
+                if (!prod) return;
+
+                const card = document.createElement('div');
+                card.className = "bg-[#222] p-4 rounded-lg border border-gray-800 shadow flex flex-col gap-3";
+
+                const cabecera = document.createElement('div');
+                cabecera.className = "flex justify-between items-center border-b border-gray-800 pb-2";
+                cabecera.innerHTML = `
+                    <span class="text-sm font-bold text-blue-400 flex items-center gap-1">⭐ ${prod.nombre}</span>
+                    <button onclick="eliminarProducto('${codigo}')" class="bg-red-900/40 text-red-400 hover:bg-red-900/80 border border-red-700/50 text-xs px-2 py-1 rounded transition-colors cursor-pointer">Eliminar</button>
+                `;
+                card.appendChild(cabecera);
+
+                const gridDias = document.createElement('div');
+                gridDias.className = "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pt-1";
+
+                DIAS_SEMANA.forEach(dia => {
+                    const isChecked = top_items_dict[codigo].includes(dia);
+                    const label = document.createElement('label');
+                    label.className = `flex items-center gap-2 p-2 bg-[#1a1a1a] rounded border text-xs cursor-pointer select-none transition-colors ${isChecked ? 'border-blue-500/50 bg-blue-950/20 text-blue-300' : 'border-gray-800 text-gray-400'}`;
+                    
+                    label.innerHTML = `
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} class="accent-blue-500 rounded"
+                               onchange="toggleDia('${codigo}', '${dia}'); refrescarEstiloVisual(this)">
+                        <span>${dia}</span>
+                    `;
+                    gridDias.appendChild(label);
+                });
+
+                card.appendChild(gridDias);
+                contenedor.appendChild(card);
+            });
+        }
+
+        function refrescarEstiloVisual(checkbox) {
+            const label = checkbox.parentElement;
+            label.classList.toggle('border-blue-500/50');
+            label.classList.toggle('bg-blue-950/20');
+            label.classList.toggle('text-blue-300');
+            label.classList.toggle('border-gray-800');
+            label.classList.toggle('text-gray-400');
+        }
+
+        // 4. SECCIÓN RENDER DE HORARIOS
+        function renderizarTablaHorarios() {
+            const tbody = document.getElementById('tabla-horarios');
+            tbody.innerHTML = '';
+
+            DIAS_SEMANA.forEach(dia => {
+                const infoDia = lista_horarios_local[dia] || { cerrado: false, rangos: [] };
+                
+                let rangos = infoDia.rangos || [];
+                while (rangos.length < 2) {
+                    rangos.push({ inicio: "", fin: "" });
+                }
+
+                const fila = document.createElement('tr');
+                fila.id = `fila-horario-${dia}`;
+                fila.className = `border-b border-gray-800/50 transition-colors ${infoDia.cerrado ? 'opacity-30 bg-red-950/5' : ''}`;
+
+                fila.innerHTML = `
+                    <td class="py-4 px-2 font-medium text-gray-200">${dia}</td>
+                    
+                    <td class="py-2 px-2 text-center">
+                        <div class="inline-flex items-center gap-1.5 bg-[#1e1e1e] border border-gray-800 p-1.5 rounded">
+                            <input type="time" value="${rangos[0].inicio}" id="time-${dia}-0-inicio" onchange="actualizarDatoHorario('${dia}', 0, 'inicio', this.value)" ${infoDia.cerrado ? 'disabled' : ''} class="bg-transparent text-xs text-center text-white focus:outline-none w-[75px]">
+                            <span class="text-gray-600 text-xs">a</span>
+                            <input type="time" value="${rangos[0].fin}" id="time-${dia}-0-fin" onchange="actualizarDatoHorario('${dia}', 0, 'fin', this.value)" ${infoDia.cerrado ? 'disabled' : ''} class="bg-transparent text-xs text-center text-white focus:outline-none w-[75px]">
+                        </div>
+                    </td>
+
+                    <td class="py-2 px-2 text-center">
+                        <div class="inline-flex items-center gap-1.5 bg-[#1e1e1e] border border-gray-800 p-1.5 rounded">
+                            <input type="time" value="${rangos[1].inicio}" id="time-${dia}-1-inicio" onchange="actualizarDatoHorario('${dia}', 1, 'inicio', this.value)" ${infoDia.cerrado ? 'disabled' : ''} class="bg-transparent text-xs text-center text-white focus:outline-none w-[75px]" placeholder="--:--">
+                            <span class="text-gray-600 text-xs">a</span>
+                            <input type="time" value="${rangos[1].fin}" id="time-${dia}-1-fin" onchange="actualizarDatoHorario('${dia}', 1, 'fin', this.value)" ${infoDia.cerrado ? 'disabled' : ''} class="bg-transparent text-xs text-center text-white focus:outline-none w-[75px]" placeholder="--:--">
+                        </div>
+                    </td>
+
+                    <td class="py-4 px-2 text-right">
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs">
+                            <input type="checkbox" ${infoDia.cerrado ? 'checked' : ''} onchange="toggleCerradoDia('${dia}', this.checked)" class="accent-red-500 rounded cursor-pointer w-4 h-4">
+                            <span class="${infoDia.cerrado ? 'text-red-400 font-bold' : 'text-gray-400'}">Cerrado hoy</span>
+                        </label>
+                    </td>
+                `;
+                tbody.appendChild(fila);
+            });
+        }
+
+        function actualizarDatoHorario(dia, indexRango, propiedad, valor) {
+            if (!lista_horarios_local[dia].rangos) {
+                lista_horarios_local[dia].rangos = [];
+            }
+            while (lista_horarios_local[dia].rangos.length <= indexRango) {
+                lista_horarios_local[dia].rangos.push({ inicio: "", fin: "" });
+            }
+            lista_horarios_local[dia].rangos[indexRango][propiedad] = valor;
+        }
+
+        function toggleCerradoDia(dia, checked) {
+            lista_horarios_local[dia].cerrado = checked;
+            renderizarTablaHorarios();
+        }
+
+        // 5. COMPILAR Y ENVIAR A SUPABASE
+        async function guardarConfiguracion() {
+            if (!supabaseClient) {
+                alert("⚠️ El SDK de Supabase no está listo.");
+                return;
+            }
+
+            const btnGuardar = document.getElementById('btn-guardar');
+            const textoOriginal = btnGuardar.innerText;
+            
+            btnGuardar.innerText = "⏳ SUBIENDO TODO A LA NUBE...";
+            btnGuardar.disabled = true;
+
+            try {
+                let horariosProcesadosParaGuardar = {};
+                
+                DIAS_SEMANA.forEach(dia => {
+                    const originalDia = lista_horarios_local[dia];
+                    let rangosValidos = [];
+
+                    if (originalDia.rangos && Array.isArray(originalDia.rangos)) {
+                        originalDia.rangos.forEach(r => {
+                            const inc = (r.inicio || "").trim();
+                            const fn = (r.fin || "").trim();
+                            if (inc && fn) {
+                                rangosValidos.push({ inicio: inc, fin: fn });
+                            }
+                        });
+                    }
+
+                    horariosProcesadosParaGuardar[dia] = {
+                        cerrado: originalDia.cerrado,
+                        rangos: rangosValidos
+                    };
+                });
+
+                // FUSIÓN TOTAL DE DATOS
+                jsonConfigOriginal.recomendados = top_items_dict;
+                jsonConfigOriginal.horarios = horariosProcesadosParaGuardar;
+
+                const jsonString = JSON.stringify(jsonConfigOriginal, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+
+                const { data, error } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .upload('menu_config.json', blob, {
+                        cacheControl: '0',
+                        contentType: 'application/json',
+                        upsert: true
+                    });
+
+                if (error) throw error;
+                
+                alert("🎉 ¡Configuración guardada con éxito!\nSe actualizaron los recomendados y los horarios de atención en la nube.");
+
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                alert("⚠️ Error al subir cambios:\n" + (error.message || "Error desconocido de red"));
+            } finally {
+                btnGuardar.innerText = textoOriginal;
+                btnGuardar.disabled = false;
+            }
+        }
+
+        window.onload = cargarDatos;
+    </script>
+</body>
+</html>

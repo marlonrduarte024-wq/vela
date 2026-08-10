@@ -14,7 +14,7 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 
 
 
-const BUCKET_URL = "https://nube.menwapp.com/lavela/json";
+const BUCKET_URL = "https://nube.menwapp.com/lavela/json2";
 const BACKUP_URL = "https://carta1.menwapp.com/web"; // 👈 Ruta de respaldo
 const cb = `?t=${new Date().getTime()}`; 
 

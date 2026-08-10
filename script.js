@@ -17,26 +17,26 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 // ============================================================
 // CONFIGURACIÓN DE RUTAS DE LA VELA
 // ============================================================
-const BUCKET_URL = "https://nube.menwapp.com/lavela/json"; // Principal (ejemplo caída)
-const BACKUP_URL = "https://carta1.menwapp.com/web";        // Respaldo
+const BUCKET_URL = "https://nube.menwapp.com/lavela/json"; // Ruta principal
+const BACKUP_URL = "https://carta1.menwapp.com/web";       // Ruta de respaldo
 const cb = `?t=${new Date().getTime()}`; 
 
 // ============================================================
-// MOTOR DE CARGA FLEXIBLE
+// MOTOR DE CARGA CON FALLBACK
 // ============================================================
 async function cargarArchivo(nombreArchivo) {
     const urlPrincipal = `${BUCKET_URL}/${nombreArchivo}${cb}`;
     const urlRespaldo = `${BACKUP_URL}/${nombreArchivo}${cb}`;
 
-    // 1. Ruta principal
+    // 1. Intentar en la ruta principal
     try {
         const res = await fetch(urlPrincipal);
         if (res.ok) return await res.json();
     } catch (e) {
-        // Silencioso para pasar al respaldo
+        // Silencioso para pasar a la secundaria
     }
 
-    // 2. Ruta de respaldo
+    // 2. Intentar en la ruta de respaldo
     try {
         const resRespaldo = await fetch(urlRespaldo);
         if (resRespaldo.ok) {
@@ -47,55 +47,51 @@ async function cargarArchivo(nombreArchivo) {
         // Silencioso
     }
 
-    // Si no existía en ningún lado, retornamos null
-    console.warn(`⚠️ Archivo ${nombreArchivo} no se encontró en ninguna ruta (404/Red).`);
     return null;
 }
 
 // ============================================================
-// INICIALIZACIÓN DE LA APP
+// INICIALIZACIÓN DE LA APP (SOLO JSONs PRINCIPALES)
 // ============================================================
 async function inicializarApp() {
-    console.log("🚀 Cargando menú...");
+    console.log("🚀 Cargando MenWapp (La Vela)...");
 
     try {
+        // Carga en paralelo ÚNICAMENTE de los 5 archivos indispensables
         const resultados = await Promise.all([
             cargarArchivo('menu.json'),
             cargarArchivo('menu_config.json'),
             cargarArchivo('descripciones.json'),
             cargarArchivo('imagenes.json'),
-            cargarArchivo('promo.json'),
-            cargarArchivo('sugeridos_promo.json'),
-            cargarArchivo('acompanamientos.json'),
-            cargarArchivo('adicionales.json'),
-            cargarArchivo('grupo1.json')
+            cargarArchivo('adicionales.json')
         ]);
 
-        const [mRaw, cfg, desc, img, prm, sug, acmp, adic, grupoPrincipal] = resultados;
+        const [mRaw, cfg, desc, img, adic] = resultados;
 
-        // --- SOLO EL MENÚ PRINCIPAL ES OBLIGATORIO ---
+        // --- VALIDACIÓN FUNDAMENTAL ---
+        // Si no cargó el menú desde ninguna de las 2 ubicaciones, se detiene
         if (!mRaw || !mRaw.menu) {
-            throw new Error("El archivo 'menu.json' no se encontró ni en la ruta principal ni en el respaldo.");
+            throw new Error("No se pudo obtener el menú principal de ninguna ubicación.");
         }
 
-        // Asignaciones con FALLBACKS VACÍOS para que no falle si no existen los JSON opcionales
+        // Asignación de datos principales
         menuData = mRaw.menu;
-        window.categoriaInicial = grupoPrincipal?.nombre || Object.keys(menuData)[0];
+        window.categoriaInicial = Object.keys(menuData)[0];
         
         menuConfig = cfg || { horarios: {}, portada: {}, recomendados: [] };
         descripciones = desc || {};
         imagenes = img || {};
-        window.productosSugeridos = sug || {};
-        
-        // Estructuras por defecto para que los componentes no den undefined
-        acompanamientosConfig = acmp || { grupos: {}, productos: {} };
         adicionalesConfig = adic || { grupos: {}, productos: {} };
 
-        // Renderizado
+        // Estructuras secundarias por defecto (sin hacer fetch a archivos inexistentes)
+        window.productosSugeridos = {};
+        acompanamientosConfig = { grupos: {}, productos: {} };
+
+        // Renderizado inmediato
         aplicarPortada();
         renderMenu();
 
-        // Control de Horarios
+        // Control de Horarios de atención
         if (typeof verificarHorario === 'function' && !verificarHorario()) {
             const btnFlotante = document.querySelector(".btn-carrito-flotante");
             if (btnFlotante) btnFlotante.style.display = "none";
@@ -121,7 +117,7 @@ async function inicializarApp() {
         }
 
     } catch (error) {
-        console.error("❌ Fallo crítico (No se pudo cargar el menú principal):", error);
+        console.error("❌ Fallo crítico de inicialización:", error);
         
         document.body.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: sans-serif; background: #0d0d0d; color: #fff;">

@@ -17,7 +17,7 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 // ============================================================
 // CONFIGURACIÓN DE RUTAS DE LA VELA
 // ============================================================
-const BUCKET_URL = "https://nube.menwapp.com/lavela/json2"; // Principal (ejemplo caída)
+const BUCKET_URL = "https://nube.menwapp.com/lavela/json"; // Principal (ejemplo caída)
 const BACKUP_URL = "https://carta1.menwapp.com/web";        // Respaldo
 const cb = `?t=${new Date().getTime()}`; 
 

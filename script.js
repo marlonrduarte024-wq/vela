@@ -17,50 +17,48 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 // ============================================================
 // CONFIGURACIÓN DE RUTAS DE LA VELA
 // ============================================================
-const BUCKET_URL = "https://nube.menwapp.com/lavela/json2"; // Simulación de ruta principal caída
-const BACKUP_URL = "https://carta1.menwapp.com/web";        // Ruta de respaldo
+const BUCKET_URL = "https://nube.menwapp.com/lavela/json2"; // Principal (ejemplo caída)
+const BACKUP_URL = "https://carta1.menwapp.com/web";        // Respaldo
 const cb = `?t=${new Date().getTime()}`; 
 
 // ============================================================
-// MOTOR DE CARGA CON RESPALDO (FALLBACK TRANSPARENTE)
+// MOTOR DE CARGA FLEXIBLE
+// ============================================================
+async function cargarArchivo(nombreArchivo) {
+    const urlPrincipal = `${BUCKET_URL}/${nombreArchivo}${cb}`;
+    const urlRespaldo = `${BACKUP_URL}/${nombreArchivo}${cb}`;
+
+    // 1. Ruta principal
+    try {
+        const res = await fetch(urlPrincipal);
+        if (res.ok) return await res.json();
+    } catch (e) {
+        // Silencioso para pasar al respaldo
+    }
+
+    // 2. Ruta de respaldo
+    try {
+        const resRespaldo = await fetch(urlRespaldo);
+        if (resRespaldo.ok) {
+            console.log(`✅ [RESPALDO OK] Cargado: ${nombreArchivo}`);
+            return await resRespaldo.json();
+        }
+    } catch (e) {
+        // Silencioso
+    }
+
+    // Si no existía en ningún lado, retornamos null
+    console.warn(`⚠️ Archivo ${nombreArchivo} no se encontró en ninguna ruta (404/Red).`);
+    return null;
+}
+
+// ============================================================
+// INICIALIZACIÓN DE LA APP
 // ============================================================
 async function inicializarApp() {
-    console.log("🚀 Iniciando MenWapp (La Vela)...");
-
-    // Función auxiliar blindada: intenta cargar desde la URL principal y si falla salta a la de respaldo
-    const cargarArchivo = async (nombreArchivo) => {
-        const urlPrincipal = `${BUCKET_URL}/${nombreArchivo}${cb}`;
-        const urlRespaldo = `${BACKUP_URL}/${nombreArchivo}${cb}`;
-
-        // 1. Intentar con la ruta principal
-        try {
-            const res = await fetch(urlPrincipal);
-            if (res.ok) {
-                return await res.json();
-            }
-            console.warn(`⚠️ Ruta principal devolvió estado ${res.status} para ${nombreArchivo}. Intentando respaldo...`);
-        } catch (e) {
-            // Captura errores de red/CORS silenciosamente para continuar al respaldo
-            console.warn(`⚠️ Error de red/CORS en ruta principal para ${nombreArchivo}. Intentando respaldo...`);
-        }
-
-        // 2. Intentar con la ruta secundaria / respaldo
-        try {
-            const resRespaldo = await fetch(urlRespaldo);
-            if (resRespaldo.ok) {
-                console.log(`✅ Cargado exitosamente desde respaldo: ${nombreArchivo}`);
-                return await resRespaldo.json();
-            }
-            console.error(`❌ También falló la ruta de respaldo (${resRespaldo.status}) para ${nombreArchivo}`);
-            return null;
-        } catch (e) {
-            console.error(`❌ Error de red en ruta de respaldo para ${nombreArchivo}:`, e);
-            return null;
-        }
-    };
+    console.log("🚀 Cargando menú...");
 
     try {
-        // Pasamos únicamente el nombre del archivo para que 'cargarArchivo' arme las dos URLs
         const resultados = await Promise.all([
             cargarArchivo('menu.json'),
             cargarArchivo('menu_config.json'),
@@ -75,27 +73,30 @@ async function inicializarApp() {
 
         const [mRaw, cfg, desc, img, prm, sug, acmp, adic, grupoPrincipal] = resultados;
 
-        // --- VALIDACIÓN DE CARGA ---
-        // Si no cargó desde la principal ni desde el respaldo, mRaw será null y saltará al catch final
+        // --- SOLO EL MENÚ PRINCIPAL ES OBLIGATORIO ---
         if (!mRaw || !mRaw.menu) {
-            throw new Error("No se pudo cargar el menú desde ninguna de las ubicaciones.");
+            throw new Error("El archivo 'menu.json' no se encontró ni en la ruta principal ni en el respaldo.");
         }
 
+        // Asignaciones con FALLBACKS VACÍOS para que no falle si no existen los JSON opcionales
         menuData = mRaw.menu;
         window.categoriaInicial = grupoPrincipal?.nombre || Object.keys(menuData)[0];
-        adicionalesConfig = adic || { grupos: {}, productos: {} };
-
+        
         menuConfig = cfg || { horarios: {}, portada: {}, recomendados: [] };
         descripciones = desc || {};
         imagenes = img || {};
-        acompanamientosConfig = acmp || { grupos: {}, productos: {} };
         window.productosSugeridos = sug || {};
+        
+        // Estructuras por defecto para que los componentes no den undefined
+        acompanamientosConfig = acmp || { grupos: {}, productos: {} };
+        adicionalesConfig = adic || { grupos: {}, productos: {} };
 
+        // Renderizado
         aplicarPortada();
         renderMenu();
 
-        // Aviso de cierre por horario
-        if (!verificarHorario()) {
+        // Control de Horarios
+        if (typeof verificarHorario === 'function' && !verificarHorario()) {
             const btnFlotante = document.querySelector(".btn-carrito-flotante");
             if (btnFlotante) btnFlotante.style.display = "none";
 
@@ -113,16 +114,15 @@ async function inicializarApp() {
             }
 
             document.body.insertAdjacentHTML('afterbegin', `
-                <div id="aviso-cerrado" style="background:#e60000; color:white; text-align:center; padding:12px; font-weight:bold; position:sticky; top:0; z-index:10000; font-family: Arial, sans-serif; border-bottom: 2px solid rgba(0,0,0,0.1);">
+                <div id="aviso-cerrado" style="background:#e60000; color:white; text-align:center; padding:12px; font-weight:bold; position:sticky; top:0; z-index:10000; font-family: Arial, sans-serif;">
                     <div style="font-size: 1.1em;">🌙 En este momento no tenemos servicio</div>
                     <div style="font-size: 0.9em; font-weight: normal; margin-top: 4px; opacity: 0.9;">${textoHorario}</div>
                 </div>`);
         }
 
     } catch (error) {
-        console.error("Error crítico de inicialización (Ambas rutas fallaron):", error);
+        console.error("❌ Fallo crítico (No se pudo cargar el menú principal):", error);
         
-        // --- MENSAJE AUTOMÁTICO SOLO SI FALLAN PRINCIPAL Y RESPALDO ---
         document.body.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: sans-serif; background: #0d0d0d; color: #fff;">
             <h1 style="font-size: 4rem;">⛵</h1>

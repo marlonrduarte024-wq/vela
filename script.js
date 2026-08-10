@@ -14,35 +14,39 @@ let adicionalesConfig = { grupos: {}, productos: {} }; // Nueva variable
 
 
 
-const BUCKET_URL = "https://nube.menwapp.com/lavela/json2";
-const BACKUP_URL = "https://carta1.menwapp.com/web"; // 👈 Ruta de respaldo
+// ============================================================
+// CONFIGURACIÓN DE RUTAS DE LA VELA
+// ============================================================
+const BUCKET_URL = "https://nube.menwapp.com/lavela/json2"; // Simulación de ruta principal caída
+const BACKUP_URL = "https://carta1.menwapp.com/web";        // Ruta de respaldo
 const cb = `?t=${new Date().getTime()}`; 
 
 // ============================================================
-// MOTOR DE CARGA CON RESPALDO (FALLBACK)
+// MOTOR DE CARGA CON RESPALDO (FALLBACK TRANSPARENTE)
 // ============================================================
 async function inicializarApp() {
-    console.log("🚀 Iniciando MenWapp...");
+    console.log("🚀 Iniciando MenWapp (La Vela)...");
 
-    // Función auxiliar que intenta cargar desde la URL principal y luego desde el respaldo
+    // Función auxiliar blindada: intenta cargar desde la URL principal y si falla salta a la de respaldo
     const cargarArchivo = async (nombreArchivo) => {
         const urlPrincipal = `${BUCKET_URL}/${nombreArchivo}${cb}`;
         const urlRespaldo = `${BACKUP_URL}/${nombreArchivo}${cb}`;
 
         // 1. Intentar con la ruta principal
         try {
-            const res = await fetch(urlPrincipal, { mode: 'cors' });
+            const res = await fetch(urlPrincipal);
             if (res.ok) {
                 return await res.json();
             }
-            console.warn(`⚠️ Falló ruta principal (${res.status}) para ${nombreArchivo}. Intentando respaldo...`);
+            console.warn(`⚠️ Ruta principal devolvió estado ${res.status} para ${nombreArchivo}. Intentando respaldo...`);
         } catch (e) {
-            console.warn(`⚠️ Error de red en ruta principal para ${nombreArchivo}. Intentando respaldo...`);
+            // Captura errores de red/CORS silenciosamente para continuar al respaldo
+            console.warn(`⚠️ Error de red/CORS en ruta principal para ${nombreArchivo}. Intentando respaldo...`);
         }
 
-        // 2. Intentar con la ruta secundaria/respaldo
+        // 2. Intentar con la ruta secundaria / respaldo
         try {
-            const resRespaldo = await fetch(urlRespaldo, { mode: 'cors' });
+            const resRespaldo = await fetch(urlRespaldo);
             if (resRespaldo.ok) {
                 console.log(`✅ Cargado exitosamente desde respaldo: ${nombreArchivo}`);
                 return await resRespaldo.json();
@@ -109,7 +113,7 @@ async function inicializarApp() {
             }
 
             document.body.insertAdjacentHTML('afterbegin', `
-                <div id="aviso-cerrado" style="background:#d32f2f; color:white; text-align:center; padding:12px; font-weight:bold; position:sticky; top:0; z-index:10000; font-family: Arial, sans-serif; border-bottom: 2px solid rgba(0,0,0,0.1);">
+                <div id="aviso-cerrado" style="background:#e60000; color:white; text-align:center; padding:12px; font-weight:bold; position:sticky; top:0; z-index:10000; font-family: Arial, sans-serif; border-bottom: 2px solid rgba(0,0,0,0.1);">
                     <div style="font-size: 1.1em;">🌙 En este momento no tenemos servicio</div>
                     <div style="font-size: 0.9em; font-weight: normal; margin-top: 4px; opacity: 0.9;">${textoHorario}</div>
                 </div>`);
@@ -120,23 +124,15 @@ async function inicializarApp() {
         
         // --- MENSAJE AUTOMÁTICO SOLO SI FALLAN PRINCIPAL Y RESPALDO ---
         document.body.innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: 'Poppins', sans-serif; background: #fff;">
-            <h1 style="font-size: 4rem;">🍔</h1>
-            <h2 style="color: #333; margin: 20px 0;">En estos momentos no tenemos servicio, Pero puedes ver nuestra carta aquí mismo para que te antojes, DISTRITO donde encuentras las mejores hamburguesas de Bucaramanga🍔🍔🍔:</h2>
-            
-            <div style="width: 100%; max-width: 800px; height: 600px; border: 2px solid #333; border-radius: 10px; overflow: hidden; background: #eee;">
-                <iframe 
-                    src="https://drive.google.com/file/d/1DMvgJ03AbKH13kdNR-z5xib-VpB3c7wG/preview" 
-                    width="100%" 
-                    height="100%" 
-                    frameborder="0">
-                </iframe>
-            </div>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; text-align:center; padding:20px; font-family: sans-serif; background: #0d0d0d; color: #fff;">
+            <h1 style="font-size: 4rem;">⛵</h1>
+            <h2 style="color: #fff; margin: 20px 0; max-width: 600px; font-size: 1.2rem; line-height: 1.5;">
+                En estos momentos nuestro sistema principal está en mantenimiento. Por favor intenta recargar la página en unos minutos.
+            </h2>
         </div>
         `;
     }
 }
-
 // ============================================================
 // LÓGICA DE PRODUCTOS Y MODAL
 // ============================================================

@@ -6,12 +6,13 @@
     <title>Menú Digital</title>
     <style>
         :root {
-            --primary: #d32f2f;
-            --bg: #f8f9fa;
-            --card-bg: #ffffff;
-            --text: #212121;
-            --text-muted: #666666;
-            --border: #e0e0e0;
+            --primary: #0F2C59;       /* Azul oscuro principal */
+            --primary-light: #1B4D89; /* Azul medio para hover y destacados */
+            --bg: #f4f6f9;            /* Fondo gris ultra suave */
+            --card-bg: #ffffff;       /* Blanco puro */
+            --text: #111827;          /* Texto oscuro legible */
+            --text-muted: #6B7280;    /* Texto secundario */
+            --border: #E5E7EB;       /* Borde sutil */
         }
 
         * {
@@ -24,7 +25,9 @@
         body {
             background-color: var(--bg);
             color: var(--text);
-            padding-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         /* HEADER & DATOS DEL NEGOCIO */
@@ -32,17 +35,17 @@
             background-color: var(--card-bg);
             text-align: center;
             padding: 24px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            margin-bottom: 16px;
         }
 
         .logo {
-            width: 90px;
-            height: 90px;
-            object-fit: cover;
-            border-radius: 50%;
+            max-width: 120px;
+            max-height: 90px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
             margin-bottom: 12px;
-            border: 2px solid var(--primary);
         }
 
         .nombre-negocio {
@@ -68,7 +71,7 @@
             background: var(--card-bg);
             z-index: 100;
             padding: 10px 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
             margin-bottom: 20px;
         }
 
@@ -85,27 +88,29 @@
         }
 
         .btn-cat {
-            background: #f0f0f0;
+            background: #EBF1F6;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--text);
+            color: var(--primary);
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .btn-cat.activo {
             background: var(--primary);
-            color: #fff;
+            color: #ffffff;
         }
 
         /* CONTENEDOR PRINCIPAL */
         main {
             max-width: 800px;
+            width: 100%;
             margin: 0 auto;
             padding: 0 16px;
+            flex: 1;
         }
 
         .seccion-categoria {
@@ -113,12 +118,14 @@
         }
 
         .titulo-categoria {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 700;
+            color: var(--primary);
             border-bottom: 2px solid var(--primary);
             padding-bottom: 4px;
             margin-bottom: 14px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* GRID Y CARDS DE PRODUCTOS */
@@ -149,6 +156,7 @@
         .producto-nombre {
             font-size: 0.95rem;
             font-weight: 600;
+            color: var(--text);
         }
 
         .producto-codigo {
@@ -159,7 +167,7 @@
         .producto-precio {
             font-size: 1rem;
             font-weight: 700;
-            color: var(--primary);
+            color: var(--primary-light);
             white-space: nowrap;
         }
 
@@ -169,6 +177,60 @@
             padding: 40px;
             font-size: 1.1rem;
             color: var(--text-muted);
+        }
+
+        /* FOOTER CENTRADO */
+        .footer-menwapp {
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            padding: 24px 16px;
+            margin-top: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+        }
+
+        .footer-menwapp .logo-footer {
+            height: 38px;
+            width: auto;
+            margin-bottom: 8px;
+            object-fit: contain;
+        }
+
+        .footer-menwapp .descripcion {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 4px 0 12px 0;
+            max-width: 400px;
+        }
+
+        .footer-menwapp .btn-whatsapp-footer {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            background: #25D366;
+            color: #ffffff;
+            padding: 9px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(37, 211, 102, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .footer-menwapp .btn-whatsapp-footer:active {
+            transform: scale(0.98);
+        }
+
+        .footer-menwapp .copyright {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 14px;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -191,35 +253,34 @@
     <main id="menu-container">
         <div class="loading">Cargando la carta...</div>
     </main>
-<footer class="footer-menwapp" style="text-align: center; padding: 20px; background: var(--color-fondo); color: var(--color-texto);">
-  <div class="logo">
-    <img src="https://capitalbga.menwapp.com/imagenes/ASCOMP.JPG" alt="ASCOMP Logo" style="height: 40px; width: auto; margin-bottom: 10px;">
-  </div>
-  
-  <div class="descripcion" style="font-size:0.85rem; opacity:0.8; margin:5px 0;">
-    Desarrollamos tu sistema de Gestor de pedidos con menú digital
-  </div>
-  
-  <div class="soporte">
-    <a class="btn-whatsapp-footer" 
-   href="https://wa.me/573108094441?text=hola,%20tengo%20un%20restaurante%20y%20quiero%20sistematizar%20mi%20negocio" 
-   target="_blank" 
-   style="display:inline-block; margin-top:10px; text-decoration:none; background:#25D366; color:white; padding:8px 15px; border-radius:20px; font-size:0.85rem; font-weight:600;">
-   📲 Información sobre el sistema
-</a>
-  </div>
-  
-  <div class="copyright" style="font-size:0.75rem; opacity:0.6; margin-top:15px;">
-    Solución hecha por <strong>ASCOMP</strong>
-    
-      <div class="copyright" style="font-size:0.75rem; opacity:0.6; margin-top:15px;">
-    exclusivo para el sistema POS <strong>ASCOMP</strong>
-  </div>
-</footer>
+
+    <footer class="footer-menwapp">
+        <div>
+            <img class="logo-footer" src="https://capitalbga.menwapp.com/imagenes/ASCOMP.JPG" alt="ASCOMP Logo">
+        </div>
+        
+        <div class="descripcion">
+            Desarrollamos tu sistema de Gestor de pedidos con menú digital
+        </div>
+        
+        <div class="soporte">
+            <a class="btn-whatsapp-footer" 
+               href="https://wa.me/573108094441?text=hola,%20tengo%20un%20restaurante%20y%20quiero%20sistematizar%20mi%20negocio" 
+               target="_blank">
+                📲 Información sobre el sistema
+            </a>
+        </div>
+        
+        <div class="copyright">
+            Solución hecha por <strong>ASCOMP</strong><br>
+            Exclusivo para el sistema POS <strong>ASCOMP</strong>
+        </div>
+    </footer>
+
     <script>
         // CONFIGURACIÓN DE ARCHIVOS
-        const DAT_URL = "perso.dat"; // Ruta a tu archivo .dat
-        const MENU_URL = "menu.json";   // Ruta a tu archivo menu.json
+        const DAT_URL = "perso.dat"; 
+        const MENU_URL = "menu.json";   
         const cb = `?t=${Date.now()}`;
 
         // 1. CARGAR DATOS DEL NEGOCIO (.DAT)
@@ -230,25 +291,23 @@
                 
                 const texto = await res.text();
                 
-                // Expresión regular para extraer campos respetando comillas y comas
                 const campos = texto.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)
                                    ?.map(c => c.replace(/^"|"$/g, '').trim()) || [];
 
                 if (campos.length >= 5) {
-                    // Índices según el estándar de tu archivo .dat:
-                    // 1: Nombre, 2: Dirección, 3: Teléfono, 4: NIT, 5: Nombre de archivo Logo
                     document.getElementById("nombre-negocio").innerText = campos[1] || "Restaurante";
                     document.getElementById("direccion-negocio").innerText = `📍 ${campos[2] || ''}`;
                     document.getElementById("telefono-negocio").innerText = `📞 ${campos[3] || ''}`;
                     document.getElementById("nit-negocio").innerText = campos[4] ? `NIT: ${campos[4]}` : '';
                     
                     if (campos[5]) {
-                        document.getElementById("logo").src = campos[5];
+                        // Cambiamos automáticamente extensión si viene en .jpg a .png si aplica
+                        const logoNombre = campos[5].replace(/\.jpg$/i, '.png');
+                        document.getElementById("logo").src = logoNombre;
                     }
                 }
             } catch (e) {
                 console.warn("Aviso: No se cargó el archivo .dat dinámico, usando datos por defecto.", e);
-                // Fallback por defecto si no encuentra el archivo .dat
                 document.getElementById("nombre-negocio").innerText = "MI RESTAURANTE";
             }
         }
@@ -283,7 +342,7 @@
                         
                         const el = document.getElementById(catId);
                         if (el) {
-                            const offset = 60; // Compensación por el header pegajoso
+                            const offset = 70;
                             const bodyRect = document.body.getBoundingClientRect().top;
                             const elementRect = el.getBoundingClientRect().top;
                             const elementPosition = elementRect - bodyRect;
@@ -304,7 +363,6 @@
                     let htmlProductos = `<h2 class="titulo-categoria">${categoria.trim()}</h2><div class="grid-productos">`;
 
                     productos.forEach(p => {
-                        // Filtramos productos con precio 0 si es necesario
                         const precioFormateado = p.precio > 0 
                             ? `$${Number(p.precio).toLocaleString('es-CO')}` 
                             : 'Consultar';

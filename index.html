@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Digital</title>
+    <style>
+        :root {
+            --primary: #d32f2f;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #212121;
+            --text-muted: #666666;
+            --border: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 40px;
+        }
+
+        /* HEADER & DATOS DEL NEGOCIO */
+        header {
+            background-color: var(--card-bg);
+            text-align: center;
+            padding: 24px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            width: 90px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 12px;
+            border: 2px solid var(--primary);
+        }
+
+        .nombre-negocio {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .info-negocio {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        /* NAVEGACIÓN POR CATEGORÍAS */
+        .nav-container {
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            z-index: 100;
+            padding: 10px 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .nav-categorias {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .nav-categorias::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        .btn-cat {
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cat.activo {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* CONTENEDOR PRINCIPAL */
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        .seccion-categoria {
+            margin-bottom: 28px;
+        }
+
+        .titulo-categoria {
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 4px;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+        }
+
+        /* GRID Y CARDS DE PRODUCTOS */
+        .grid-productos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        .card-producto {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .producto-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding-right: 8px;
+        }
+
+        .producto-nombre {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .producto-codigo {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .producto-precio {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+
+        /* ESTADO DE CARGA */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <img id="logo" class="logo" src="LOGO.JPG" alt="Logo" onerror="this.style.display='none'">
+        <h1 id="nombre-negocio" class="nombre-negocio">Cargando...</h1>
+        <div class="info-negocio">
+            <span id="nit-negocio"></span>
+            <span id="direccion-negocio"></span>
+            <span id="telefono-negocio"></span>
+        </div>
+    </header>
+
+    <div class="nav-container">
+        <nav id="nav-categorias" class="nav-categorias"></nav>
+    </div>
+
+    <main id="menu-container">
+        <div class="loading">Cargando la carta...</div>
+    </main>
+
+    <script>
+        // CONFIGURACIÓN DE ARCHIVOS
+        const DAT_URL = "empresa.dat"; // Ruta a tu archivo .dat
+        const MENU_URL = "menu.json";   // Ruta a tu archivo menu.json
+        const cb = `?t=${Date.now()}`;
+
+        // 1. CARGAR DATOS DEL NEGOCIO (.DAT)
+        async function cargarDatosEmpresa() {
+            try {
+                const res = await fetch(`${DAT_URL}${cb}`);
+                if (!res.ok) throw new Error("No se pudo cargar el archivo .dat");
+                
+                const texto = await res.text();
+                
+                // Expresión regular para extraer campos respetando comillas y comas
+                const campos = texto.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)
+                                   ?.map(c => c.replace(/^"|"$/g, '').trim()) || [];
+
+                if (campos.length >= 5) {
+                    // Índices según el estándar de tu archivo .dat:
+                    // 1: Nombre, 2: Dirección, 3: Teléfono, 4: NIT, 5: Nombre de archivo Logo
+                    document.getElementById("nombre-negocio").innerText = campos[1] || "Restaurante";
+                    document.getElementById("direccion-negocio").innerText = `📍 ${campos[2] || ''}`;
+                    document.getElementById("telefono-negocio").innerText = `📞 ${campos[3] || ''}`;
+                    document.getElementById("nit-negocio").innerText = campos[4] ? `NIT: ${campos[4]}` : '';
+                    
+                    if (campos[5]) {
+                        document.getElementById("logo").src = campos[5];
+                    }
+                }
+            } catch (e) {
+                console.warn("Aviso: No se cargó el archivo .dat dinámico, usando datos por defecto.", e);
+                // Fallback por defecto si no encuentra el archivo .dat
+                document.getElementById("nombre-negocio").innerText = "MI RESTAURANTE";
+            }
+        }
+
+        // 2. CARGAR Y RENDERIZAR MENÚ (JSON)
+        async function cargarMenu() {
+            const container = document.getElementById("menu-container");
+            const nav = document.getElementById("nav-categorias");
+
+            try {
+                const res = await fetch(`${MENU_URL}${cb}`);
+                if (!res.ok) throw new Error("Error consultando el menú");
+
+                const data = await res.json();
+                const menu = data.menu || data;
+
+                container.innerHTML = "";
+                nav.innerHTML = "";
+
+                let esPrimeraCat = true;
+
+                for (const [categoria, productos] of Object.entries(menu)) {
+                    const catId = "cat-" + categoria.replace(/\s+/g, '-').toLowerCase();
+
+                    // A) BOTÓN DE NAVEGACIÓN
+                    const btnNav = document.createElement("button");
+                    btnNav.className = `btn-cat ${esPrimeraCat ? 'activo' : ''}`;
+                    btnNav.innerText = categoria.trim();
+                    btnNav.onclick = (e) => {
+                        document.querySelectorAll('.btn-cat').forEach(b => b.classList.remove('activo'));
+                        e.target.classList.add('activo');
+                        
+                        const el = document.getElementById(catId);
+                        if (el) {
+                            const offset = 60; // Compensación por el header pegajoso
+                            const bodyRect = document.body.getBoundingClientRect().top;
+                            const elementRect = el.getBoundingClientRect().top;
+                            const elementPosition = elementRect - bodyRect;
+                            
+                            window.scrollTo({
+                                top: elementPosition - offset,
+                                behavior: 'smooth'
+                            });
+                        }
+                    };
+                    nav.appendChild(btnNav);
+
+                    // B) BLOQUE DE CATEGORÍA
+                    const seccion = document.createElement("section");
+                    seccion.className = "seccion-categoria";
+                    seccion.id = catId;
+
+                    let htmlProductos = `<h2 class="titulo-categoria">${categoria.trim()}</h2><div class="grid-productos">`;
+
+                    productos.forEach(p => {
+                        // Filtramos productos con precio 0 si es necesario
+                        const precioFormateado = p.precio > 0 
+                            ? `$${Number(p.precio).toLocaleString('es-CO')}` 
+                            : 'Consultar';
+
+                        htmlProductos += `
+                            <div class="card-producto">
+                                <div class="producto-info">
+                                    <span class="producto-nombre">${p.articulo}</span>
+                                    <span class="producto-codigo">Cód: ${p.codigo}</span>
+                                </div>
+                                <span class="producto-precio">${precioFormateado}</span>
+                            </div>
+                        `;
+                    });
+
+                    htmlProductos += `</div>`;
+                    seccion.innerHTML = htmlProductos;
+                    container.appendChild(seccion);
+
+                    esPrimeraCat = false;
+                }
+
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = `<div class="loading">❌ No se pudo cargar la carta. Revisa la conexión.</div>`;
+            }
+        }
+
+        // INICIALIZACIÓN
+        document.addEventListener("DOMContentLoaded", () => {
+            cargarDatosEmpresa();
+            cargarMenu();
+        });
+    </script>
+</body>
+</html>

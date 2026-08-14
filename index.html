@@ -237,7 +237,7 @@
 <body>
 
     <header>
-        <img id="logo" class="logo" src="LOGO.png" alt="Logo" onerror="this.style.display='none'">
+        <img id="logo" class="logo" src="https://lavela.menwapp.com/logo.png" alt="Logo" onerror="this.style.display='none'">
         <h1 id="nombre-negocio" class="nombre-negocio">Cargando...</h1>
         <div class="info-negocio">
             <span id="nit-negocio"></span>
@@ -278,13 +278,17 @@
     </footer>
 
     <script>
-        // CONFIGURACIÓN DE ARCHIVOS
+        // CONFIGURACIÓN DE ARCHIVOS Y RECURSOS
         const DAT_URL = "perso.dat"; 
         const MENU_URL = "menu.json";   
+        const LOGO_DEFAULT = "https://lavela.menwapp.com/logo.png";
         const cb = `?t=${Date.now()}`;
 
         // 1. CARGAR DATOS DEL NEGOCIO (.DAT)
         async function cargarDatosEmpresa() {
+            const imgLogo = document.getElementById("logo");
+            imgLogo.src = LOGO_DEFAULT; // Asignamos la URL fija por defecto
+
             try {
                 const res = await fetch(`${DAT_URL}${cb}`);
                 if (!res.ok) throw new Error("No se pudo cargar el archivo .dat");
@@ -296,15 +300,9 @@
 
                 if (campos.length >= 5) {
                     document.getElementById("nombre-negocio").innerText = campos[1] || "Restaurante";
-                    document.getElementById("direccion-negocio").innerText = `📍 ${campos[2] || ''}`;
-                    document.getElementById("telefono-negocio").innerText = `📞 ${campos[3] || ''}`;
+                    document.getElementById("direccion-negocio").innerText = campos[2] ? `📍 ${campos[2]}` : '';
+                    document.getElementById("telefono-negocio").innerText = campos[3] ? `📞 ${campos[3]}` : '';
                     document.getElementById("nit-negocio").innerText = campos[4] ? `NIT: ${campos[4]}` : '';
-                    
-                    if (campos[5]) {
-                        // Cambiamos automáticamente extensión si viene en .jpg a .png si aplica
-                        const logoNombre = campos[5].replace(/\.jpg$/i, '.png');
-                        document.getElementById("logo").src = logoNombre;
-                    }
                 }
             } catch (e) {
                 console.warn("Aviso: No se cargó el archivo .dat dinámico, usando datos por defecto.", e);

@@ -786,7 +786,7 @@ function mostrarHorarios() {
     });
 }
 function mostrarUbicacion() {
-    const direccion = "Cl. 43 #34-25 barrio El Prado, Bucaramanga";
+    const direccion = "Cra. 32 # 59-41, Sotomayor, Bucaramanga, Santander";
     
     Swal.fire({
         title: '📍 Ubicación',
